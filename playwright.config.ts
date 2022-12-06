@@ -1,5 +1,28 @@
-import type { PlaywrightTestConfig } from '@playwright/test';
-import { devices } from '@playwright/test';
+import { devices, PlaywrightTestConfig, TestInfo, Page, expect } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
+
+expect.extend({
+  async toBeAccessible(page: Page, testInfo: TestInfo) {
+    const scanResults = await new AxeBuilder({ page }).analyze();
+    const numberOfViolatedRules = scanResults.violations.length;
+
+    if (numberOfViolatedRules == 0) {
+      return {
+        message: () => 'pass',
+        pass: true,
+      };
+    } else {
+      await testInfo.attach('accessibility-scan-results', {
+        body: JSON.stringify(scanResults.violations, null, 2),
+        contentType: 'application/json',
+      });
+      return {
+        message: () => `${numberOfViolatedRules} violated rules were found`,
+        pass: false,
+      };
+    }
+  },
+});
 
 const config: PlaywrightTestConfig = {
   testDir: './tests',
